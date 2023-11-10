@@ -466,7 +466,7 @@ impl<Enc: Encoder> EncoderPositionTracker<Enc> {
 
 /// Synchronously decodes a value from the given reader using a custom decoder.
 #[cfg(feature = "std")]
-pub fn decode_sync_with<D: Decoder, R: std::io::BufRead>(reader: &mut R, mut decoder: D) -> Result<D::Value, ReadError<D::Error>> {
+pub fn decode_sync_with<D: Decoder, R: std::io::BufRead + ?Sized>(reader: &mut R, mut decoder: D) -> Result<D::Value, ReadError<D::Error>> {
     loop {
         let buf = match reader.fill_buf() {
             Ok(buf) => buf,
@@ -487,13 +487,13 @@ pub fn decode_sync_with<D: Decoder, R: std::io::BufRead>(reader: &mut R, mut dec
 
 /// Synchronously decodes a value from the given reader.
 #[cfg(feature = "std")]
-pub fn decode_sync<D: Decoder + Default>(reader: &mut impl std::io::BufRead) -> Result<D::Value, ReadError<D::Error>> { 
+pub fn decode_sync<D: Decoder + Default>(reader: &mut (impl std::io::BufRead + ?Sized)) -> Result<D::Value, ReadError<D::Error>> {
     decode_sync_with(reader, D::default())
 }
 
 /// Synchronously decodes a value from the given reader using a custom decoder.
 #[cfg(feature = "lgio")]
-pub fn decode_sync_lgio_with<D: Decoder, R: lgio::BufRead>(reader: &mut R, mut decoder: D) -> Result<D::Value, ReadError<D::Error, R::ReadError>> {
+pub fn decode_sync_lgio_with<D: Decoder, R: lgio::BufRead + ?Sized>(reader: &mut R, mut decoder: D) -> Result<D::Value, ReadError<D::Error, R::ReadError>> {
     loop {
         let buf = reader.fill_buf().map_err(ReadError::Read)?;
         if buf.is_empty() {
@@ -510,7 +510,7 @@ pub fn decode_sync_lgio_with<D: Decoder, R: lgio::BufRead>(reader: &mut R, mut d
 
 /// Synchronously decodes a value from the given reader.
 #[cfg(feature = "lgio")]
-pub fn decode_sync_lgio<D: Decoder + Default, R: lgio::BufRead>(reader: &mut R) -> Result<D::Value, ReadError<D::Error, R::ReadError>> { 
+pub fn decode_sync_lgio<D: Decoder + Default, R: lgio::BufRead + ?Sized>(reader: &mut R) -> Result<D::Value, ReadError<D::Error, R::ReadError>> {
     decode_sync_lgio_with(reader, D::default())
 }
 
