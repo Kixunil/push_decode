@@ -7,7 +7,11 @@ pub struct UnexpectedEnd {
 
 impl fmt::Display for UnexpectedEnd {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "end of stream reached too soon, more {} bytes were required", self.missing)
+        let plural = match self.missing {
+            1 => " was",
+            _ => "s were",
+        };
+        write!(f, "end of stream reached too soon, {} more byte{} required", self.missing, plural)
     }
 }
 
