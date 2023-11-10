@@ -106,6 +106,50 @@ pub trait Decoder: Sized {
     fn chain<D: Decoder>(self, following: D) -> decoders::combinators::Chain<Self, D> {
         decoders::combinators::Chain::new(self, following)
     }
+
+    /// Resets the decoder returning the decoded value.
+    fn take(&mut self) -> Result<Self::Value, Self::Error> where Self: Default {
+        core::mem::take(self).end()
+    }
+
+    /// Decodes a value from lower-level decoder.
+    ///
+    /// When multiple decoders are chained one after another in a large state machine this method
+    /// can simplify delegation of decoding to the underlying decoder. You can call it inside a
+    /// helper function (closure) which returns `Result<Infallible, Result<(), YourError>`
+    /// and then just call `sub_decode()?` at the beginning of each decoding state and continue
+    /// working with the returned value.
+    ///
+    /// The method also accepts a function (closure) to convert the errors since using `map_err`
+    /// would be annoying because of double wrapping. In case no conversion is desired simply pass
+    /// in [`core::convert::identity`].
+    ///
+    /// Note that this requires the `Default` trait because it resets the decoder every time a
+    /// value is decoded. Apart from this resolving borrowing issues it also allows easily decoding
+    /// a stream of value in a loop. If you need to work with decoders that require a value (e.g.
+    /// [`VecDecoder`](decoders::VecDecoder)) it is recommended to create a specialized deoder that
+    /// will decode both (e.g. using [`Then`](decoders::combinators::then)) and call sub_deode on
+    /// that.
+    ///
+    /// You may notice this looks a lot like `await` and in principle it is very similar. The
+    /// differences are:
+    ///
+    /// * `await` also implements the state machine using `Future` trait. This doesn't. The
+    ///   `Future::poll` method would have to have another argument for us to be able to use it.
+    /// * This returns double result instead of `Poll<Result>` to make it return in case of "not
+    ///   ready" as well. The `Try` implementation on `Poll` only returns on `Err`, never on
+    ///   `Pending`. This is important for ergonomics.
+    /// * While it could be argued the type is morally `Poll<Error>` this one doesn't implement
+    ///   `Try` either so it's unsuitable for the purpose.
+    fn sub_decode<E, F: FnMut(Self::Error) -> E>(&mut self, bytes: &mut &[u8], mut map_err: F) -> Result<Self::Value, Result<(), E>> where Self: Default {
+        self.decode_chunk(bytes).map_err(&mut map_err).map_err(Err)?;
+        if bytes.is_empty() {
+            Err(Ok(()))
+        } else {
+            self.take().map_err(&mut map_err).map_err(Err)
+        }
+    }
+
 }
 
 /// Represents types producing bytes of some encoded value.
