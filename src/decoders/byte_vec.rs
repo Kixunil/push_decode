@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use crate::Decoder;
 use crate::error::UnexpectedEnd;
 
+#[derive(Debug)]
 pub struct ByteVecDecoder {
     buf: Vec<u8>,
     required: usize,

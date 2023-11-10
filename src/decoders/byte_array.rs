@@ -1,6 +1,7 @@
 use crate::Decoder;
 use crate::error::UnexpectedEnd;
 
+#[derive(Debug)]
 pub struct ByteArrayDecoder<const N: usize> {
     buf: [u8; N],
     len: usize,

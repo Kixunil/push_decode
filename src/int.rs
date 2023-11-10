@@ -6,7 +6,7 @@ use crate::{Decoder, decoders::ByteArrayDecoder};
 pub trait Int: sealed::Int {
     #[doc(hidden)]
     #[cfg(rust_v_1_51)]
-    type Decoder: Decoder<Value = Self::Bytes, Error = crate::error::UnexpectedEnd> + Default;
+    type InnerDecoder: Decoder<Value = Self::Bytes, Error = crate::error::UnexpectedEnd> + Default + core::fmt::Debug;
     #[doc(hidden)]
     type Bytes: AsRef<[u8]>;
 
@@ -27,7 +27,7 @@ macro_rules! impl_int {
         $(
             impl Int for $int {
                 #[cfg(rust_v_1_51)]
-                type Decoder = ByteArrayDecoder<{ core::mem::size_of::<Self>() }>;
+                type InnerDecoder = ByteArrayDecoder<{ core::mem::size_of::<Self>() }>;
                 type Bytes = [u8; { core::mem::size_of::<Self>() }];
 
                 fn from_le_bytes(bytes: Self::Bytes) -> Self {

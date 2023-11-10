@@ -1,6 +1,7 @@
 use crate::Decoder;
 use crate::error::UnexpectedEnd;
 
+#[derive(Default, Debug)]
 pub struct U8Decoder {
     buf: Option<u8>,
 }

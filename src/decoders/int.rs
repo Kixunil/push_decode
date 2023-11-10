@@ -1,9 +1,10 @@
+use core::fmt;
 use core::marker::PhantomData;
 use crate::Decoder;
 use crate::error::UnexpectedEnd;
 use crate::int::*;
 
-pub struct IntDecoder<T: Int, Endian: ByteOrder>(T::Decoder, PhantomData<fn() -> T>, PhantomData<Endian>);
+pub struct IntDecoder<T: Int, Endian: ByteOrder>(T::InnerDecoder, PhantomData<fn() -> T>, PhantomData<Endian>);
 
 impl<T: Int, Endian: ByteOrder> IntDecoder<T, Endian> {
     pub fn new() -> Self {
@@ -14,6 +15,12 @@ impl<T: Int, Endian: ByteOrder> IntDecoder<T, Endian> {
 impl<T: Int, Endian: ByteOrder> Default for IntDecoder<T, Endian> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T: Int, Endian: ByteOrder> fmt::Debug for IntDecoder<T, Endian> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "IntDecoder<{}>({:?})", core::any::type_name::<Endian>(), self.0)
     }
 }
 

@@ -1,6 +1,7 @@
 use either::Either;
 use crate::Decoder;
 
+#[derive(Debug)]
 pub struct Then<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second>(ThenState<First, Second, Fun>);
 
 impl<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second> Then<First, Second, Fun> {
@@ -9,6 +10,7 @@ impl<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second> Then<
     }
 }
 
+#[derive(Debug)]
 enum ThenState<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second> {
     First(First, Fun),
     Second(Second),

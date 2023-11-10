@@ -1,3 +1,4 @@
+use core::fmt;
 use either::Either;
 use crate::Decoder;
 
@@ -6,6 +7,21 @@ pub struct Chain<First: Decoder, Second: Decoder>(State<First, Second>);
 impl<First: Decoder, Second: Decoder> Chain<First, Second> {
     pub(crate) fn new(first: First, second: Second) -> Self {
         Chain(State::First(first, second))
+    }
+}
+
+impl <First, Second> fmt::Debug for Chain<First, Second>
+where First: Decoder + fmt::Debug,
+      Second: Decoder + fmt::Debug,
+      First::Value: fmt::Debug
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self.0 {
+            State::First(a, b) => f.debug_tuple("Chain::First").field(a).field(b).finish(),
+            State::Second(a, b) => f.debug_tuple("Chain::Second").field(a).field(b).finish(),
+            State::Errored => f.debug_tuple("Chain::Errored").finish(),
+            State::Panicked => f.debug_tuple("Chain::Panicked").finish(),
+        }
     }
 }
 

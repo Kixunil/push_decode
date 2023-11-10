@@ -4,6 +4,7 @@ use core::fmt;
 use crate::Decoder;
 use crate::error::UnexpectedEnd;
 
+#[derive(Debug)]
 pub struct Utf8StringDecoder {
     // invariant: buf[..valid_up_to] is a valid string
     buf: Vec<u8>,
