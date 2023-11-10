@@ -660,11 +660,13 @@ impl From<ReadError<core::convert::Infallible, core::convert::Infallible>> for c
 }
 
 #[cfg(feature = "std")]
-impl From<ReadError<std::io::Error, std::io::Error>> for std::io::Error {
-    fn from(error: ReadError<std::io::Error, std::io::Error>) -> Self {
+impl<E: std::error::Error + Send + Sync + 'static> From<ReadError<E, std::io::Error>> for std::io::Error {
+    fn from(error: ReadError<E, std::io::Error>) -> Self {
+        use std::io::ErrorKind;
+
         match error {
             ReadError::Read(error) => error,
-            ReadError::Decode(error) => error,
+            ReadError::Decode(error) => std::io::Error::new(ErrorKind::InvalidData, error),
         }
     }
 }
