@@ -18,13 +18,14 @@ impl Decoder for U8Decoder {
     type Value = u8;
     type Error = UnexpectedEnd;
 
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
         match (self.buf, bytes.get(0)) {
             (None, Some(byte)) => {
                 self.buf = Some(*byte);
-                Ok(1)
+                *bytes = &bytes[1..];
+                Ok(())
             },
-            _ => Ok(0),
+            _ => Ok(()),
         }
     }
 

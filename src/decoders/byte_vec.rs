@@ -22,10 +22,11 @@ impl Decoder for ByteVecDecoder {
     type Value = Vec<u8>;
     type Error = UnexpectedEnd;
 
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
         let to_copy = bytes.len().min(self.required - self.buf.len());
         self.buf.extend_from_slice(&bytes[..to_copy]);
-        Ok(to_copy)
+        *bytes = &bytes[to_copy..];
+        Ok(())
     }
 
     fn end(self) -> Result<Self::Value, Self::Error> {

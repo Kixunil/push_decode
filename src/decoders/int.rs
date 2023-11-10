@@ -28,8 +28,8 @@ impl<T: Int> Decoder for IntDecoder<T, BigEndian> {
     type Value = T;
     type Error = UnexpectedEnd;
 
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
-        self.0.bytes_received(bytes)
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
+        self.0.decode_chunk(bytes)
     }
 
     fn end(self) -> Result<Self::Value, Self::Error> {
@@ -41,8 +41,8 @@ impl<T: Int> Decoder for IntDecoder<T, LittleEndian> {
     type Value = T;
     type Error = UnexpectedEnd;
 
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
-        self.0.bytes_received(bytes)
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
+        self.0.decode_chunk(bytes)
     }
 
     fn end(self) -> Result<Self::Value, Self::Error> {

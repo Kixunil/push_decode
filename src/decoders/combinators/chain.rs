@@ -47,22 +47,22 @@ impl<First: Decoder, Second: Decoder> Decoder for Chain<First, Second> {
     type Error = Either<First::Error, Second::Error>;
 
     #[inline]
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
         match &mut self.0 {
             State::First(first, _) => {
-                let len = first.bytes_received(bytes).map_err(Either::Left)?;
-                if len < bytes.len() {
+                first.decode_chunk(bytes).map_err(Either::Left)?;
+                if !bytes.is_empty() {
                     let (first, second) = self.0.take_first();
                     let first_val = first.end()
                         .map_err(|error| { self.0 = State::Errored; Either::Left(error)})?;
                     self.0 = State::Second(first_val, second);
-                    self.bytes_received(&bytes[len..]).map(|len2| len2 + len)
+                    self.decode_chunk(bytes)
                 } else {
-                    Ok(len)
+                    Ok(())
                 }
             },
             State::Second(_, second) => {
-                second.bytes_received(bytes).map_err(Either::Right)
+                second.decode_chunk(bytes).map_err(Either::Right)
             },
             State::Errored => panic!("use of failed decoder"),
             State::Panicked => panic!("use of panicked decoder"),

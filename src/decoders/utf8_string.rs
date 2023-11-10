@@ -26,10 +26,10 @@ impl Decoder for Utf8StringDecoder {
     type Value = String;
     type Error = Error;
 
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
         let to_copy = bytes.len().min(self.required - self.buf.len());
         if to_copy == 0 {
-            return Ok(0);
+            return Ok(());
         }
         if self.buf.capacity() == 0 {
             self.buf.reserve(self.required);
@@ -40,12 +40,14 @@ impl Decoder for Utf8StringDecoder {
                 Ok(_) => {
                     self.buf.extend_from_slice(&bytes[..to_copy]);
                     self.valid_up_to += to_copy;
-                    Ok(to_copy)
+                    *bytes = &bytes[to_copy..];
+                    Ok(())
                 },
                 Err(error) if error.error_len().is_none() => {
                     self.buf.extend_from_slice(&bytes[..to_copy]);
                     self.valid_up_to += error.valid_up_to();
-                    Ok(to_copy)
+                    *bytes = &bytes[to_copy..];
+                    Ok(())
                 },
                 Err(error) => Err(Error::InvalidUtf8(error)),
             }
@@ -53,12 +55,14 @@ impl Decoder for Utf8StringDecoder {
             self.buf.extend_from_slice(&bytes[..to_copy]);
             match core::str::from_utf8(&self.buf[self.valid_up_to..]) {
                 Ok(_) => {
+                    *bytes = &bytes[to_copy..];
                     self.valid_up_to = self.buf.len();
-                    Ok(to_copy)
+                    Ok(())
                 },
                 Err(error) if error.error_len().is_none() => {
+                    *bytes = &bytes[to_copy..];
                     self.valid_up_to += error.valid_up_to();
-                    Ok(to_copy)
+                    Ok(())
                 },
                 Err(error) => Err(Error::InvalidUtf8(error)),
             }

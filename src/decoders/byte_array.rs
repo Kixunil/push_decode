@@ -26,11 +26,12 @@ impl<const N: usize> Decoder for ByteArrayDecoder<N> {
     type Value = [u8; N];
     type Error = UnexpectedEnd;
 
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
         let to_copy = bytes.len().min(N - self.len);
         self.buf[self.len..(self.len + to_copy)].copy_from_slice(&bytes[..to_copy]);
         self.len += to_copy;
-        Ok(to_copy)
+        *bytes = &bytes[to_copy..];
+        Ok(())
     }
 
     fn end(self) -> Result<Self::Value, Self::Error> {

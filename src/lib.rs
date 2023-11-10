@@ -57,11 +57,12 @@ pub trait Decoder: Sized {
     /// Decoding error.
     type Error;
 
-    /// Called when the next chunk of bytes is available.
+    /// Processes nex chunk of bytes and updates the cursor.
     ///
-    /// The decoder to processes the chunk of bytes performing validation and transformation.
+    /// The decoder has to processes the chunk of bytes performing validation and transformation.
     ///
-    /// If the bytes are valid the method returns the number of bytes consumed.
+    /// If the bytes are valid the slice is updated to point to unread part. Thus if the slice is
+    /// non-epty after this method returns the decoder ended decoding.
     ///
     /// # Errors
     ///
@@ -70,7 +71,7 @@ pub trait Decoder: Sized {
     ///
     /// **No** error may be returned if the number of bytes passed is not sufficient to decode the
     /// value - the remaining bytes will be passed in the following call(s) of this method.
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error>;
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error>;
 
     /// Called when decoding has ended or there are no more bytes.
     ///
@@ -82,6 +83,17 @@ pub trait Decoder: Sized {
     /// This returns an error if the bytes passed so far are invalid as defined by the decoder.
     /// This commonly happens if the byte stream ended unexpectedly.
     fn end(self) -> Result<Self::Value, Self::Error>;
+
+    /// Processes nex chunk of bytes without updating the cursor.
+    ///
+    /// This method is usually more convenient for the top-level callers which are receiving bytes
+    /// from buffered readers. Instead of modifying the slice this returns the number of bytes
+    /// consumed which can be passed to the `consume` method of a buffered reader.
+    fn bytes_received(&mut self, mut bytes: &[u8]) -> Result<usize, Self::Error> {
+        let prev_len = bytes.len();
+        self.decode_chunk(&mut bytes)?;
+        Ok(prev_len - bytes.len())
+    }
 
     /// Chains another decoder after this one finishes such that the value of this one is used to
     /// initialize the next one.

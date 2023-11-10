@@ -24,32 +24,32 @@ impl<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second> Decod
     type Error = Either<First::Error, Second::Error>;
 
     #[inline]
-    fn bytes_received(&mut self, bytes: &[u8]) -> Result<usize, Self::Error> {
+    fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
         let decoder = core::mem::replace(&mut self.0, ThenState::Panicked);
         match decoder {
             ThenState::First(mut first, fun) => {
-                let len = first.bytes_received(bytes).map_err(Either::Left)?;
-                if len < bytes.len() {
+                first.decode_chunk(bytes).map_err(Either::Left)?;
+                if !bytes.is_empty() {
                     let result = first.end();
                     self.0 = ThenState::Errored;
                     let val = result.map_err(Either::Left)?;
                     self.0 = ThenState::Panicked;
                     let mut second = fun(val);
-                    let result = second.bytes_received(&bytes[len..]);
+                    let result = second.decode_chunk(bytes);
                     self.0 = ThenState::Second(second);
-                    result.map(|len2| len2 + len).map_err(Either::Right)
+                    result.map_err(Either::Right)
                 } else {
                     self.0 = ThenState::First(first, fun);
-                    Ok(len)
+                    Ok(())
                 }
             },
             ThenState::Second(mut second) => {
-                let result = second.bytes_received(bytes);
+                let result = second.decode_chunk(bytes);
                 self.0 = ThenState::Second(second);
                 result.map_err(Either::Right)
             },
-            ThenState::Panicked => panic!("Decoder::bytes_received called after it already panicked"),
-            ThenState::Errored => panic!("Decoder::bytes_received called after it already returned an error"),
+            ThenState::Panicked => panic!("Decoder::decode_chunk called after it already panicked"),
+            ThenState::Errored => panic!("Decoder::decode_chunk called after it already returned an error"),
         }
     }
 
@@ -63,8 +63,8 @@ impl<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second> Decod
             ThenState::Second(second) => {
                 second.end().map_err(Either::Right)
             },
-            ThenState::Panicked => panic!("Decoder::end called after Decoder::bytes_received already panicked"),
-            ThenState::Errored => panic!("Decoder::end called after Decoder::bytes_received already returned an error"),
+            ThenState::Panicked => panic!("Decoder::end called after Decoder::decode_chunk already panicked"),
+            ThenState::Errored => panic!("Decoder::end called after Decoder::decode_chunk already returned an error"),
         }
     }
 }
