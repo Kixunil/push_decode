@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! mapped_decoder {
     ($($(#[$($attr:tt)*])* $vis:vis struct $name:ident($inner:ty) using $value:ty => $func:expr;)*) => {
         $(

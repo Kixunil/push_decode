@@ -43,6 +43,7 @@ pub mod error;
 pub mod int;
 #[cfg(any(feature = "tokio", feature = "async-std", feature = "futures_0_3"))]
 pub mod future;
+mod macros;
 
 use core::fmt;
 
