@@ -9,6 +9,7 @@ categories = ["parsing", "rust-patterns", "no-std", "no-std::no-alloc"]
 keywords = ["decoding", "encoding", "async-agnostic", "no_std"]
 readme = "README.md"
 edition = "2018"
+rust-version = "1.56.0"
 
 [package.metadata.docs.rs]
 all-features = true

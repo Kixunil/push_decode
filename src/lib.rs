@@ -46,6 +46,7 @@ pub mod future;
 mod macros;
 
 use core::fmt;
+use core::ops::ControlFlow;
 
 /// Represents types responsible for decoding bytes pushed into it.
 ///
@@ -116,7 +117,7 @@ pub trait Decoder: Sized {
     ///
     /// When multiple decoders are chained one after another in a large state machine this method
     /// can simplify delegation of decoding to the underlying decoder. You can call it inside a
-    /// helper function (closure) which returns `Result<Infallible, Result<(), YourError>`
+    /// helper function (closure) which returns `ControlFlow<Result<(), YourError>, Infallible>`
     /// and then just call `sub_decode()?` at the beginning of each decoding state and continue
     /// working with the returned value.
     ///
@@ -136,20 +137,24 @@ pub trait Decoder: Sized {
     ///
     /// * `await` also implements the state machine using `Future` trait. This doesn't. The
     ///   `Future::poll` method would have to have another argument for us to be able to use it.
-    /// * This returns double result instead of `Poll<Result>` to make it return in case of "not
+    /// * This returns `ControlFlow` instead of `Poll<Result>` to make it return in case of "not
     ///   ready" as well. The `Try` implementation on `Poll` only returns on `Err`, never on
     ///   `Pending`. This is important for ergonomics.
     /// * While it could be argued the type is morally `Poll<Error>` this one doesn't implement
     ///   `Try` either so it's unsuitable for the purpose.
-    fn sub_decode<E, F: FnMut(Self::Error) -> E>(&mut self, bytes: &mut &[u8], mut map_err: F) -> Result<Self::Value, Result<(), E>> where Self: Default {
-        self.decode_chunk(bytes).map_err(&mut map_err).map_err(Err)?;
+    fn sub_decode<E, F: FnMut(Self::Error) -> E>(&mut self, bytes: &mut &[u8], mut map_err: F) -> ControlFlow<Result<(), E>, Self::Value> where Self: Default {
+        if let Err(error) = self.decode_chunk(bytes) {
+            return ControlFlow::Break(Err(map_err(error)));
+        }
         if bytes.is_empty() {
-            Err(Ok(()))
+            ControlFlow::Break(Ok(()))
         } else {
-            self.take().map_err(&mut map_err).map_err(Err)
+            match self.take() {
+                Ok(value) => ControlFlow::Continue(value),
+                Err(error) => ControlFlow::Break(Err(map_err(error))),
+            }
         }
     }
-
 }
 
 /// Represents types producing bytes of some encoded value.

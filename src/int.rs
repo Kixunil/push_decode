@@ -1,11 +1,9 @@
 //! Tools for decoding and encoding integers.
 
-#[cfg(rust_v_1_51)]
 use crate::{Decoder, decoders::ByteArrayDecoder};
 
 pub trait Int: sealed::Int {
     #[doc(hidden)]
-    #[cfg(rust_v_1_51)]
     type InnerDecoder: Decoder<Value = Self::Bytes, Error = crate::error::UnexpectedEnd> + Default + core::fmt::Debug;
     #[doc(hidden)]
     type Bytes: AsRef<[u8]>;
@@ -26,7 +24,6 @@ macro_rules! impl_int {
     ($($int:ty),+) => {
         $(
             impl Int for $int {
-                #[cfg(rust_v_1_51)]
                 type InnerDecoder = ByteArrayDecoder<{ core::mem::size_of::<Self>() }>;
                 type Bytes = [u8; { core::mem::size_of::<Self>() }];
 
