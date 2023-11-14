@@ -127,7 +127,7 @@ pub trait Decoder: Sized {
     /// Note that this requires the `Default` trait because it resets the decoder every time a
     /// value is decoded. Apart from this resolving borrowing issues it also allows easily decoding
     /// a stream of value in a loop. If you need to work with decoders that require a value (e.g.
-    /// [`VecDecoder`](decoders::VecDecoder)) it is recommended to create a specialized deoder that
+    /// [`VecDecoder`](decoders::VecDecoder)) it is recommended to create a specialized decoder that
     /// will decode both (e.g. using [`Then`](decoders::combinators::then)) and call sub_deode on
     /// that.
     ///
