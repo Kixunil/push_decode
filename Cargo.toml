@@ -8,7 +8,7 @@ description = "Push-based decoding and pull-based encoding"
 categories = ["parsing", "rust-patterns", "no-std", "no-std::no-alloc"]
 keywords = ["decoding", "encoding", "async-agnostic", "no_std"]
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 rust-version = "1.56.0"
 
 [package.metadata.docs.rs]
