@@ -116,10 +116,9 @@ pub trait Decoder: Sized {
     /// Decodes a value from lower-level decoder.
     ///
     /// When multiple decoders are chained one after another in a large state machine this method
-    /// can simplify delegation of decoding to the underlying decoder. You can call it inside a
-    /// helper function (closure) which returns `ControlFlow<Result<(), YourError>, Infallible>`
-    /// and then just call `sub_decode()?` at the beginning of each decoding state and continue
-    /// working with the returned value.
+    /// can simplify delegation of decoding to the underlying decoder. You can wrap decoding in a
+    /// closure passed to [`Self::wrap_sub_decode`] and then just call `sub_decode()?` at the
+    /// beginning of each decoding state and continue working with the returned value.
     ///
     /// The method also accepts a function (closure) to convert the errors since using `map_err`
     /// would be annoying because of double wrapping. In case no conversion is desired simply pass
@@ -153,6 +152,21 @@ pub trait Decoder: Sized {
                 Ok(value) => ControlFlow::Continue(value),
                 Err(error) => ControlFlow::Break(Err(map_err(error))),
             }
+        }
+    }
+
+    /// Helper for using sub_decode.
+    ///
+    /// This can be used together with [`sub_decode`](Self::sub_decode) on sub-decoders to make
+    /// decoding easier. It helps with type inference and converts `ControlFlow` into `Result`.
+    ///
+    /// Note that this doesn't allow returning `ControlFlow::Continue` as that wouldn't make sense.
+    /// It is recommended to just return `ControlFlow::Break` with the result returned from
+    /// `decode_chunk` of the last decoder.
+    fn wrap_sub_decode<F: FnOnce() -> ControlFlow<Result<(), Self::Error>, core::convert::Infallible>>(f: F) -> Result<(), Self::Error> {
+        match f() {
+            ControlFlow::Continue(never) => match never {},
+            ControlFlow::Break(result) => result,
         }
     }
 }
