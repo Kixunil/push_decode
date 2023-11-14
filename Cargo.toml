@@ -1,6 +1,6 @@
 [package]
 name = "push_decode"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Martin Habovstiak <martin.habovstiak@gmail.com>"]
 license = "MITNFA"
 repository = "https://github.com/Kixunil/push_decode"
