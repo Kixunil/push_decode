@@ -310,6 +310,9 @@ pub trait Encoder: Sized {
 #[cfg(any(feature = "std", feature = "tokio", feature = "async-std", feature = "futures_0_3"))]
 pub trait BufWrite {}
 
+#[cfg(any(feature = "std", feature = "tokio", feature = "async-std", feature = "futures_0_3"))]
+impl<'a, T: BufWrite> BufWrite for &mut T {}
+
 #[cfg(feature = "std")]
 impl<T: std::io::Write> BufWrite for std::io::BufWriter<T> {}
 
