@@ -218,6 +218,21 @@ pub trait Encoder: Sized {
         EncoderPositionTracker::new(self)
     }
 
+    fn write_to_slice(mut self, buf: &mut &mut [u8]) -> Result<(), error::BufferOverflow> {
+        while !self.encoded_chunk().is_empty() {
+            let chunk = self.encoded_chunk();
+            if chunk.len() > buf.len() {
+                return Err(error::BufferOverflow { bytes_past_end: chunk.len() - buf.len()});
+            }
+            buf[..chunk.len()].copy_from_slice(chunk);
+            *buf = &mut core::mem::take(buf)[chunk.len()..];
+            if !self.next() {
+                break;
+            }
+        }
+        Ok(())
+    }
+
     /// Writes all encoded bytes to a vec.
     ///
     /// Note that this does **not** call `reserve` since there's no way to know the amount to
