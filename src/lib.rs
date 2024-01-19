@@ -103,6 +103,15 @@ pub trait Decoder: Sized {
         decoders::combinators::Then::new(self, fun)
     }
 
+    /// Chains another decoder after this one finishes such that the value of this one is used to
+    /// initialize the next one.
+    ///
+    /// Unlike `then` this combinator may also return an error and convert the errors into a custom
+    /// one.
+    fn then_try<E, R: Decoder, F: FnOnce(Self::Value) -> Result<R, E>>(self, fun: F) -> decoders::combinators::ThenTry<E, Self, R, F> where E: From<Self::Error> + From<R::Error> {
+        decoders::combinators::ThenTry::new(self, fun)
+    }
+
     /// Chains another decoder after this one to decode two values.
     fn chain<D: Decoder>(self, following: D) -> decoders::combinators::Chain<Self, D> {
         decoders::combinators::Chain::new(self, following)
