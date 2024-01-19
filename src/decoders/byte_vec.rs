@@ -16,6 +16,13 @@ impl ByteVecDecoder {
             required: required_bytes,
         }
     }
+
+    pub fn with_reserve_limit(required_bytes: usize, limit: usize) -> Self {
+        ByteVecDecoder {
+            buf: Vec::with_capacity(required_bytes.min(limit)),
+            required: required_bytes,
+        }
+    }
 }
 
 impl Decoder for ByteVecDecoder {
