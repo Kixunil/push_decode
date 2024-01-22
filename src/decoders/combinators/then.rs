@@ -1,6 +1,8 @@
 use either::Either;
 use crate::Decoder;
 
+pub type ThenFnPtr<First, Second> = Then<First, Second, fn(<First as Decoder>::Value) -> Second>;
+
 #[derive(Debug)]
 pub struct Then<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second>(ThenState<First, Second, Fun>);
 

@@ -1,5 +1,7 @@
 use crate::Decoder;
 
+pub type ThenTryFnPtr<E, First, Second> = ThenTry<E, First, Second, fn(<First as Decoder>::Value) -> Result<Second, E>>;
+
 #[derive(Debug)]
 pub struct ThenTry<E, First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Result<Second, E>>(ThenTryState<E, First, Second, Fun>) where E: From<First::Error> + From<Second::Error>;
 
