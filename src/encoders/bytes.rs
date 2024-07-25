@@ -1,5 +1,8 @@
 use crate::Encoder;
 
+/// A convenient alias for encoding a single byte.
+pub type ByteEncoder = BytesEncoder<[u8; 1]>;
+
 /// Trivially directly encodes byte slices.
 ///
 /// This accepts any byte-carrying type, notably including `&str`/`String`.
@@ -13,6 +16,13 @@ impl<T: AsRef<[u8]>> BytesEncoder<T> {
     }
 }
 
+impl BytesEncoder<[u8; 1]> {
+    /// Creates the encoder encoding a single byte.
+    pub fn single_byte(byte: u8) -> Self {
+        Self::new([byte])
+    }
+}
+
 impl<T: AsRef<[u8]>> Encoder for BytesEncoder<T> {
     fn encoded_chunk(&self) -> &[u8] {
         self.0.as_ref()
@@ -23,9 +33,15 @@ impl<T: AsRef<[u8]>> Encoder for BytesEncoder<T> {
     }
 }
 
-impl<T> From<T> for BytesEncoder<T> {
+impl<T: AsRef<[u8]>> From<T> for BytesEncoder<T> {
     fn from(value: T) -> Self {
         Self::new(value)
+    }
+}
+
+impl From<u8> for BytesEncoder<[u8; 1]> {
+    fn from(value: u8) -> Self {
+        Self::single_byte(value)
     }
 }
 
