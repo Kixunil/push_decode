@@ -23,6 +23,12 @@ impl<T: AsRef<[u8]>> Encoder for BytesEncoder<T> {
     }
 }
 
+impl<T> From<T> for BytesEncoder<T> {
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
 #[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
