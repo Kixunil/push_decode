@@ -278,6 +278,32 @@ pub trait Encoder: Sized {
         EncoderPositionTracker::new(self)
     }
 
+    /// Synchronously encodes the whole value by calling the closure with pieces of encoded data.
+    ///
+    /// This is useful for infallible building synchronous helpers such as when writing to `Vec`.
+    fn for_each_sync(mut self, mut f: impl FnMut(&[u8])) {
+        while !self.encoded_chunk().is_empty() {
+            f(self.encoded_chunk());
+            if !self.next() {
+                break;
+            }
+        }
+    }
+
+    /// Synchronously encodes the whole value by calling the closure with pieces of encoded data.
+    ///
+    /// This is useful for fallible building synchronous helpers such as when writing to
+    /// `io::Write`.
+    fn try_for_each_sync<E>(mut self, mut f: impl FnMut(&[u8]) -> Result<(), E>) -> Result<(), E> {
+        while !self.encoded_chunk().is_empty() {
+            f(self.encoded_chunk())?;
+            if !self.next() {
+                break;
+            }
+        }
+        Ok(())
+    }
+
     fn write_to_slice(mut self, buf: &mut &mut [u8]) -> Result<(), error::BufferOverflow> {
         while !self.encoded_chunk().is_empty() {
             let chunk = self.encoded_chunk();
@@ -298,37 +324,20 @@ pub trait Encoder: Sized {
     /// Note that this does **not** call `reserve` since there's no way to know the amount to
     /// reserve. This should be handled by the code producing the decoder instead.
     #[cfg(feature = "alloc")]
-    fn write_to_vec(mut self, buf: &mut alloc::vec::Vec<u8>) {
-        while !self.encoded_chunk().is_empty() {
-            buf.extend_from_slice(self.encoded_chunk());
-            if !self.next() {
-                break;
-            }
-        }
+    fn write_to_vec(self, buf: &mut alloc::vec::Vec<u8>) {
+        self.for_each_sync(|chunk| buf.extend_from_slice(chunk));
     }
 
     /// Writes all encoded bytes to the `std` writer.
     #[cfg(feature = "std")]
-    fn write_all_sync<W: std::io::Write + BufWrite>(mut self, mut writer: W) -> std::io::Result<()> {
-        while !self.encoded_chunk().is_empty() {
-            writer.write_all(self.encoded_chunk())?;
-            if !self.next() {
-                break;
-            }
-        }
-        Ok(())
+    fn write_all_sync<W: std::io::Write + BufWrite>(self, mut writer: W) -> std::io::Result<()> {
+        self.try_for_each_sync(|chunk| writer.write_all(chunk))
     }
 
     /// Writes all encoded bytes to the `std` writer.
     #[cfg(feature = "lgio")]
     fn write_all_sync_lgio<W: lgio::BufWrite>(mut self, mut writer: W) -> Result<(), W::WriteError> {
-        while !self.encoded_chunk().is_empty() {
-            writer.write_all(self.encoded_chunk())?;
-            if !self.next() {
-                break;
-            }
-        }
-        Ok(())
+        self.try_for_each_sync(|chunk| writer.write_all(chunk))
     }
 
     /// Writes all encoded bytes to the `tokio` async writer.
@@ -683,6 +692,25 @@ pub async fn decode_async_std_with<D: Decoder, R: async_std::io::BufRead>(reader
 #[cfg(feature = "async-std")]
 pub async fn decode_async_std<D: Decoder + Default>(reader: impl async_std::io::BufRead) -> Result<D::Value, ReadError<D::Error>> {
     decode_async_std_with(reader, D::default()).await
+}
+
+pub async fn encode_for_each_async<F: core::future::Future<Output = ()>>(mut encoder: impl Encoder, mut f: impl FnMut(&[u8]) -> F) {
+    while !encoder.encoded_chunk().is_empty() {
+        f(encoder.encoded_chunk()).await;
+        if !encoder.next() {
+            break;
+        }
+    }
+}
+
+pub async fn try_encode_for_each_async<E, F: core::future::Future<Output = Result<(), E>>>(mut encoder: impl Encoder, mut f: impl FnMut(&[u8]) -> F) -> Result<(), E> {
+    while !encoder.encoded_chunk().is_empty() {
+        f(encoder.encoded_chunk()).await?;
+        if !encoder.next() {
+            break;
+        }
+    }
+    Ok(())
 }
 
 /// Returned when either reading or decoding fails.
