@@ -1,7 +1,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 use crate::error::UnexpectedEnd;
 
 #[derive(Debug)]
@@ -81,6 +81,12 @@ impl Decoder for Utf8StringDecoder {
                 Err(Error::InvalidUtf8(core::str::from_utf8(&self.buf).unwrap_err()))
             }
         }
+    }
+}
+
+impl KnownMinLenDecoder for Utf8StringDecoder {
+    fn min_required_bytes(&self) -> usize {
+        self.required - self.buf.len()
     }
 }
 

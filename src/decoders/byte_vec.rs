@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 use crate::error::UnexpectedEnd;
 
 #[derive(Debug)]
@@ -42,6 +42,12 @@ impl Decoder for ByteVecDecoder {
         } else {
             Ok(self.buf)
         }
+    }
+}
+
+impl KnownMinLenDecoder for ByteVecDecoder {
+    fn min_required_bytes(&self) -> usize {
+        self.required - self.buf.len()
     }
 }
 

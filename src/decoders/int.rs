@@ -1,6 +1,6 @@
 use core::fmt;
 use core::marker::PhantomData;
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 use crate::error::UnexpectedEnd;
 use crate::int::*;
 
@@ -47,5 +47,11 @@ impl<T: Int> Decoder for IntDecoder<T, LittleEndian> {
 
     fn end(self) -> Result<Self::Value, Self::Error> {
         self.0.end().map(Int::from_le_bytes)
+    }
+}
+
+impl<T: Int> KnownMinLenDecoder for IntDecoder<T, BigEndian> {
+    fn min_required_bytes(&self) -> usize {
+        self.0.min_required_bytes()
     }
 }

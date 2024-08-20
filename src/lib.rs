@@ -180,6 +180,57 @@ pub trait Decoder: Sized {
     }
 }
 
+/// Represents decoders that know a minimum length required for the state to advance.
+pub trait KnownMinLenDecoder: Decoder {
+    /// Returns the minimum number of bytes known to be consumed by the next `decode_chunk` call.
+    ///
+    /// If this method returns a number `n` then this method MUST guarantee that the next call to
+    /// `decode_chunk` will consume *at least* `n` bytes. Failing to do so may lead to data
+    /// corruption. The implementations MUST return zero if *and only if* decoding is at the end.
+    ///
+    /// The requirement implies that returning a lower number than the known one is valid (if it's
+    /// above zero). However it is inefficient to return a lower number than the known one because
+    /// it may cause readers to read smaller chunks.
+    fn min_required_bytes(&self) -> usize;
+
+    /// Returns true if decoding ended.
+    fn is_at_end(&self) -> bool {
+        self.min_required_bytes() == 0
+    }
+
+    /// Returns a shorter slice if the `buffer` length exceeds `min_required_bytes`.
+    ///
+    /// This is useful when decoding from an unbuffered reader using an intermediate buffer.
+    /// Usually the type `T` should be `u8` or `MaybeUninit<u8>`.
+    fn clamp_buffer<'a, T>(&self, buffer: &'a mut [T]) -> &'a mut [T] {
+        let min = buffer.len().min(self.min_required_bytes());
+        &mut buffer[..min]
+    }
+
+    /// Low-level helper for synchronously decoding from unbuffered readers.
+    ///
+    /// This method takes a reader function responsible for filling the provided buffer with data
+    /// and uses it to decode a value. Note that this is slower than buffered reading because of zeroed temporary buffer and intermediate copying.
+    /// You should prefer functions like `decode_sync` or, if you really need unbuffered, `decode_sync_unbuffered_with` but if you're implementing
+    /// a helper for your own trait/type thi method should be useful.
+    ///
+    /// The `BUF_LEN` specifies the length of the buffer to use. In general people tend to use
+    /// vales of a few kB (e.g. 4096) but if you know the maximum length of decoded chunk for
+    /// specific decoder you should pick that one.
+    fn sync_decode_with_zeroed_buffer<const BUF_LEN: usize, E, F: FnMut(&mut [u8]) -> Result<usize, E>>(mut self, mut reader: F) -> Result<Self::Value, ReadError<Self::Error, E>> {
+        let mut buf = [0u8; BUF_LEN];
+        while !self.is_at_end() {
+            let buf = self.clamp_buffer(&mut buf);
+            let bytes_read = reader(buf).map_err(ReadError::Read)?;
+            if bytes_read == 0 {
+                break;
+            }
+            self.bytes_received(&buf[..bytes_read]).map_err(ReadError::Decode)?;
+        }
+        self.end().map_err(ReadError::Decode)
+    }
+}
+
 /// Represents types producing bytes of some encoded value.
 pub trait Encoder: Sized {
     /// Provides next chunk of encoded bytes.
@@ -529,6 +580,20 @@ pub fn decode_sync_with<D: Decoder, R: std::io::BufRead + ?Sized>(reader: &mut R
             break decoder.end().map_err(ReadError::Decode);
         }
     }
+}
+
+/// Synchronously decodes a value from the given reader using a slower algorithm.
+///
+/// Because this function doesn't use `BufRead` it has to make an intermediate copy that might or
+/// might not be optimized-out. It also has to make a temporary zeroed buffer because of `std`
+/// limitations and zeroing might not be optimized out. Also if the reader is a truly unbuffered OS
+/// resource this will be painfully slow for many common decoders as it'll make many syscalls.
+///
+/// The function is only provided for compatibility with poorly-designed APIs that cannot use
+/// `BufRead` for some reason.
+#[cfg(feature = "std")]
+pub fn decode_sync_unbuffered_with<const BUF_LEN: usize, D: KnownMinLenDecoder, R: std::io::Read + ?Sized>(reader: &mut R, decoder: D) -> Result<D::Value, ReadError<D::Error>> {
+    decoder.sync_decode_with_zeroed_buffer::<BUF_LEN, _, _>(move |buf| reader.read(buf))
 }
 
 /// Synchronously decodes a value from the given reader.

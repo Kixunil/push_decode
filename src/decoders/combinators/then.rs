@@ -1,5 +1,5 @@
 use either::Either;
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 
 pub type ThenFnPtr<First, Second> = Then<First, Second, fn(<First as Decoder>::Value) -> Second>;
 
@@ -67,6 +67,21 @@ impl<First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Second> Decod
             },
             ThenState::Panicked => panic!("Decoder::end called after Decoder::decode_chunk already panicked"),
             ThenState::Errored => panic!("Decoder::end called after Decoder::decode_chunk already returned an error"),
+        }
+    }
+}
+
+impl<First: KnownMinLenDecoder, Second: KnownMinLenDecoder, Fun: FnOnce(First::Value) -> Second> KnownMinLenDecoder for Then<First, Second, Fun> {
+    fn min_required_bytes(&self) -> usize {
+        match &self.0 {
+            ThenState::First(first, _) => {
+                first.min_required_bytes()
+            },
+            ThenState::Second(second) => {
+                second.min_required_bytes()
+            },
+            ThenState::Panicked => panic!("KnownMinLenDecoder::min_required_bytes called after Decoder::decode_chunk already panicked"),
+            ThenState::Errored => panic!("KnownMinLenDecoder::min_required_bytes called after Decoder::decode_chunk already returned an error"),
         }
     }
 }

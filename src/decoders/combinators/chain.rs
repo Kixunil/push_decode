@@ -1,6 +1,6 @@
 use core::fmt;
 use either::Either;
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 
 pub struct Chain<First: Decoder, Second: Decoder>(State<First, Second>);
 
@@ -79,6 +79,21 @@ impl<First: Decoder, Second: Decoder> Decoder for Chain<First, Second> {
             State::Second(first, second) => {
                 let second = second.end().map_err(Either::Right)?;
                 Ok((first, second))
+            },
+            State::Errored => panic!("use of failed decoder"),
+            State::Panicked => panic!("use of panicked decoder"),
+        }
+    }
+}
+
+impl<First: KnownMinLenDecoder, Second: KnownMinLenDecoder> KnownMinLenDecoder for Chain<First, Second> {
+    fn min_required_bytes(&self) -> usize {
+        match &self.0 {
+            State::First(first, second) => {
+                first.min_required_bytes().saturating_add(second.min_required_bytes())
+            },
+            State::Second(_, second) => {
+                second.min_required_bytes()
             },
             State::Errored => panic!("use of failed decoder"),
             State::Panicked => panic!("use of panicked decoder"),

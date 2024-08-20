@@ -1,10 +1,10 @@
 //! Tools for decoding and encoding integers.
 
-use crate::{Decoder, decoders::ByteArrayDecoder};
+use crate::{Decoder, KnownMinLenDecoder, decoders::ByteArrayDecoder};
 
 pub trait Int: sealed::Int {
     #[doc(hidden)]
-    type InnerDecoder: Decoder<Value = Self::Bytes, Error = crate::error::UnexpectedEnd> + Default + core::fmt::Debug;
+    type InnerDecoder: Decoder<Value = Self::Bytes, Error = crate::error::UnexpectedEnd> + Default + core::fmt::Debug + KnownMinLenDecoder;
     #[doc(hidden)]
     type Bytes: AsRef<[u8]>;
 

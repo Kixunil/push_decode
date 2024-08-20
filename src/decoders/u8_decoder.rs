@@ -1,4 +1,4 @@
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 use crate::error::UnexpectedEnd;
 
 #[derive(Default, Debug)]
@@ -31,6 +31,15 @@ impl Decoder for U8Decoder {
 
     fn end(self) -> Result<Self::Value, Self::Error> {
         self.buf.ok_or(UnexpectedEnd { missing: 1 })
+    }
+}
+
+impl KnownMinLenDecoder for U8Decoder {
+    fn min_required_bytes(&self) -> usize {
+        match &self.buf {
+            None => 1,
+            Some(_) => 0,
+        }
     }
 }
 

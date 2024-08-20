@@ -1,4 +1,4 @@
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 
 pub type ThenTryFnPtr<E, First, Second> = ThenTry<E, First, Second, fn(<First as Decoder>::Value) -> Result<Second, E>>;
 
@@ -75,6 +75,21 @@ impl<E, First: Decoder, Second: Decoder, Fun: FnOnce(First::Value) -> Result<Sec
             },
             ThenTryState::Panicked => panic!("Decoder::end called after Decoder::decode_chunk already panicked"),
             ThenTryState::Errored => panic!("Decoder::end called after Decoder::decode_chunk already returned an error"),
+        }
+    }
+}
+
+impl<E, First: KnownMinLenDecoder, Second: KnownMinLenDecoder, Fun: FnOnce(First::Value) -> Result<Second, E>> KnownMinLenDecoder for ThenTry<E, First, Second, Fun> where E: From<First::Error>, E: From<Second::Error> {
+    fn min_required_bytes(&self) -> usize {
+        match &self.0 {
+            ThenTryState::First(first, _) => {
+                first.min_required_bytes()
+            },
+            ThenTryState::Second(second) => {
+                second.min_required_bytes()
+            },
+            ThenTryState::Panicked => panic!("KnownMinLenDecoder::min_required_bytes called after Decoder::decode_chunk already panicked"),
+            ThenTryState::Errored => panic!("KnownMinLenDecoder::min_required_bytes called after Decoder::decode_chunk already returned an error"),
         }
     }
 }

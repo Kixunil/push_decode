@@ -1,4 +1,4 @@
-use crate::Decoder;
+use crate::{Decoder, KnownMinLenDecoder};
 use crate::error::UnexpectedEnd;
 
 #[derive(Debug)]
@@ -40,6 +40,12 @@ impl<const N: usize> Decoder for ByteArrayDecoder<N> {
         } else {
             Ok(self.buf)
         }
+    }
+}
+
+impl<const N: usize> KnownMinLenDecoder for ByteArrayDecoder<N> {
+    fn min_required_bytes(&self) -> usize {
+        N - self.len
     }
 }
 
