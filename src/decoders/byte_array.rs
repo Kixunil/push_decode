@@ -1,16 +1,17 @@
+use core::mem::MaybeUninit;
 use crate::{Decoder, KnownMinLenDecoder};
 use crate::error::UnexpectedEnd;
 
 #[derive(Debug)]
 pub struct ByteArrayDecoder<const N: usize> {
-    buf: [u8; N],
+    buf: [MaybeUninit<u8>; N],
     len: usize,
 }
 
 impl<const N: usize> ByteArrayDecoder<N> {
     pub fn new() -> Self {
         ByteArrayDecoder {
-            buf: [0; N],
+            buf: [MaybeUninit::uninit(); N],
             len: 0,
         }
     }
@@ -27,18 +28,32 @@ impl<const N: usize> Decoder for ByteArrayDecoder<N> {
     type Error = UnexpectedEnd;
 
     fn decode_chunk(&mut self, bytes: &mut &[u8]) -> Result<(), Self::Error> {
+        fn cast_slice(slice: &[u8]) -> &[MaybeUninit<u8>] {
+            // SAFETY: the pointer is alive, the lifetimes match, length matches, the layout of
+            // `MaybeUninit<T>` is same as `T`, the returned reference is immutable so the caller
+            // cannot abuse it to write `MaybeUninit::uninit` into the slice.
+            unsafe { core::slice::from_raw_parts(slice.as_ptr().cast(), slice.len()) }
+        }
         let to_copy = bytes.len().min(N - self.len);
-        self.buf[self.len..(self.len + to_copy)].copy_from_slice(&bytes[..to_copy]);
+        self.buf[self.len..(self.len + to_copy)].copy_from_slice(cast_slice(&bytes[..to_copy]));
         self.len += to_copy;
         *bytes = &bytes[to_copy..];
         Ok(())
     }
 
     fn end(self) -> Result<Self::Value, Self::Error> {
+        /// `std` version is not stable, this is pretty much a copy.
+        ///
+        /// SAFETY: requires the `array` to be entirely overwritten (initialized).
+        unsafe fn array_assume_init<const LEN: usize>(array: [MaybeUninit<u8>; LEN]) -> [u8; LEN] {
+            // SAFETY: the layouts of elements are the same, the lengths are the same, caller may
+            // only call it on initialized array.
+            core::mem::transmute_copy(&array)
+        }
         if self.len < N {
             Err(UnexpectedEnd { missing: N - self.len })
         } else {
-            Ok(self.buf)
+            Ok(unsafe { array_assume_init(self.buf) })
         }
     }
 }
